@@ -1,1 +1,64 @@
 @import 'tailwindcss';
+
+/* ---------------------------------------------
+ * 디자인 시스템 토큰 (Tailwind v4 @theme)
+ * 가이드의 tailwind.config.js extend 설정을 v4 방식으로 옮긴 것이다.
+ * --------------------------------------------- */
+@theme {
+  --font-sans: 'Pretendard', ui-sans-serif, system-ui, sans-serif;
+
+  --color-busan-deep: #0b2545; /* 밤바다 네이비 (Primary Text) */
+  --color-busan-primary: #134074; /* 해운대 블루 (Brand Major) */
+  --color-busan-sky: #8da9c4; /* 청량 오션 블루 (Sub Theme) */
+  --color-busan-sand: #eef4f8; /* 백사장 그레이 (Main Bg) */
+  --color-busan-accent: #ee6c4d; /* 동백꽃 레드 (Action Accent) */
+  --color-busan-gold: #f4a261; /* 광안대교 야경 골드 (Point/Badge) */
+  --color-busan-light: #f8fafc;
+
+  --shadow-premium: 0 10px 30px -5px rgb(11 37 69 / 0.06), 0 4px 12px -2px rgb(11 37 69 / 0.02);
+  --shadow-floating: 0 20px 40px -10px rgb(11 37 69 / 0.15);
+}
+
+/* Tailwind v4 의 기본 border-color 는 currentColor 이므로,
+ * 프로토타입에서 쓰던 무색 `border` 클래스의 회색 톤을 유지한다. */
+@layer base {
+  *,
+  ::after,
+  ::before,
+  ::backdrop,
+  ::file-selector-button {
+    border-color: var(--color-gray-200);
+  }
+}
+
+/* 스크롤바 최적화 */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--color-busan-sand);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--color-busan-sky);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--color-busan-primary);
+}
+
+/* 공통 유틸 */
+.gradient-hero {
+  background: linear-gradient(135deg, #0b2545 0%, #134074 50%, #8da9c4 100%);
+}
+
+.custom-leaflet-icon {
+  transition: transform 0.2s ease-in-out;
+}
+
+.custom-leaflet-icon:hover {
+  transform: scale(1.25);
+}
