@@ -7,50 +7,44 @@ import {
   increaseViews,
   loadDistricts,
   loadPlaces,
+  loadPosts,
   openWriteModal,
   posts,
+  postsMeta,
   toggleLike,
 } from '@/store'
 
 const router = useRouter()
 
-onMounted(() => {
-  loadDistricts().catch(() => {})
-  loadPlaces().catch(() => {})
-})
+const PAGE_SIZE = 8
+const currentPage = ref(1)
 
 const filters = reactive({
   category: '',
   district: '',
-  keyword: '',
 })
 
-const PAGE_SIZE = 8
-const currentPage = ref(1)
+// 검색창에 입력 중인 값. 실제 검색(API 호출)에는 searchKeyword만 사용한다.
+const keywordInput = ref('')
+const searchKeyword = ref('')
 
-const filteredPosts = computed(() => {
-  const keyword = (filters.keyword || '').trim().toLowerCase()
-
-  return posts.value.filter((post) => {
-    const categoryCode = post.category || 'REVIEW'
-    const matchCategory = !filters.category || categoryCode === filters.category
-    const matchDistrict = !filters.district || post.district === filters.district
-    const matchKeyword =
-      !keyword ||
-      (post.title || '').toLowerCase().includes(keyword) ||
-      (post.content || '').toLowerCase().includes(keyword) ||
-      (post.place_name || '').toLowerCase().includes(keyword)
-
-    return matchCategory && matchDistrict && matchKeyword
+const fetchPosts = () => {
+  loadPosts({
+    page: currentPage.value,
+    size: PAGE_SIZE,
+    categoryCode: filters.category,
+    districtId: filters.district,
+    keyword: searchKeyword.value,
   })
+}
+
+onMounted(() => {
+  loadDistricts().catch(() => {})
+  loadPlaces().catch(() => {})
+  fetchPosts()
 })
 
-const totalPages = computed(() => Math.max(1, Math.ceil(filteredPosts.value.length / PAGE_SIZE)))
-
-const paginatedPosts = computed(() => {
-  const start = (currentPage.value - 1) * PAGE_SIZE
-  return filteredPosts.value.slice(start, start + PAGE_SIZE)
-})
+const totalPages = computed(() => Math.max(1, Math.ceil(postsMeta.total / PAGE_SIZE)))
 
 const pageNumbers = computed(() => {
   const pages = []
@@ -59,20 +53,38 @@ const pageNumbers = computed(() => {
 })
 
 const goToPage = (page) => {
-  if (page < 1 || page > totalPages.value) return
+  if (page < 1 || page > totalPages.value || page === currentPage.value) return
   currentPage.value = page
+  fetchPosts()
+}
+
+const runSearch = () => {
+  searchKeyword.value = keywordInput.value.trim()
+  currentPage.value = 1
+  fetchPosts()
+}
+
+const onSearchKeydown = (event) => {
+  if (event.key === 'Enter') runSearch()
+}
+
+// 이미 선택된 카테고리를 다시 클릭해도 목록을 새로 불러오도록 watch 대신 직접 호출한다.
+// 카테고리를 바꾸면 이전 검색어는 초기화하고 해당 카테고리 전체를 보여준다.
+const selectCategory = (code) => {
+  filters.category = code
+  keywordInput.value = ''
+  searchKeyword.value = ''
+  currentPage.value = 1
+  fetchPosts()
 }
 
 watch(
-  () => [filters.category, filters.district, filters.keyword],
+  () => filters.district,
   () => {
     currentPage.value = 1
+    fetchPosts()
   },
 )
-
-watch(totalPages, (pages) => {
-  if (currentPage.value > pages) currentPage.value = pages
-})
 
 const viewPost = (post) => {
   increaseViews(post)
@@ -111,9 +123,9 @@ const viewPost = (post) => {
         <button
           class="rounded-lg px-3 py-1.5 text-xs font-bold transition-all"
           :class="filters.category === '' ? 'bg-busan-primary text-white' : 'bg-busan-sand text-gray-600'"
-          @click="filters.category = ''"
+          @click="selectCategory('')"
         >
-          전체 수다
+          전체
         </button>
         <button
           class="rounded-lg px-3 py-1.5 text-xs font-bold transition-all"
@@ -122,7 +134,7 @@ const viewPost = (post) => {
               ? 'bg-amber-100 text-amber-800'
               : 'bg-busan-sand text-gray-600'
           "
-          @click="filters.category = 'REVIEW'"
+          @click="selectCategory('REVIEW')"
         >
           💬 후기
         </button>
@@ -131,7 +143,7 @@ const viewPost = (post) => {
           :class="
             filters.category === 'AD' ? 'bg-rose-100 text-rose-800' : 'bg-busan-sand text-gray-600'
           "
-          @click="filters.category = 'AD'"
+          @click="selectCategory('AD')"
         >
           📢 제휴 홍보
         </button>
@@ -143,14 +155,23 @@ const viewPost = (post) => {
           class="bg-busan-sand rounded-xl border px-3 py-1.5 text-xs font-bold focus:outline-none"
         >
           <option value="">모든 자치구</option>
-          <option v-for="dist in districts" :key="dist.id" :value="dist.name">{{ dist.name }}</option>
+          <option v-for="dist in districts" :key="dist.id" :value="dist.id">{{ dist.name }}</option>
         </select>
-        <input
-          v-model="filters.keyword"
-          type="text"
-          placeholder="제목/내용/장소 통합검색"
-          class="bg-busan-sand rounded-xl border px-3.5 py-1.5 text-xs focus:outline-none"
-        />
+        <div class="flex items-center gap-1.5">
+          <input
+            v-model="keywordInput"
+            type="text"
+            placeholder="제목/장소 검색"
+            class="bg-busan-sand rounded-xl border px-3.5 py-1.5 text-xs focus:outline-none"
+            @keydown="onSearchKeydown"
+          />
+          <button
+            class="bg-busan-primary flex h-8 w-8 shrink-0 items-center justify-center rounded-xl text-xs font-bold text-white transition-all hover:opacity-90"
+            @click="runSearch"
+          >
+            <i class="fa-solid fa-magnifying-glass"></i>
+          </button>
+        </div>
       </div>
     </div>
 
@@ -169,7 +190,7 @@ const viewPost = (post) => {
           </thead>
           <tbody class="divide-y divide-gray-100 text-xs sm:text-sm">
             <tr
-              v-for="post in paginatedPosts"
+              v-for="post in posts"
               :key="post.id"
               class="hover:bg-busan-sand/10 transition-colors"
             >
@@ -213,7 +234,7 @@ const viewPost = (post) => {
               </td>
             </tr>
 
-            <tr v-if="filteredPosts.length === 0">
+            <tr v-if="posts.length === 0">
               <td colspan="5" class="py-12 text-center font-medium text-gray-400">
                 검색된 소통 기록이 없습니다.
               </td>
@@ -224,7 +245,7 @@ const viewPost = (post) => {
     </div>
 
     <!-- 페이지네이션 -->
-    <div v-if="filteredPosts.length > 0" class="flex items-center justify-center gap-1.5">
+    <div v-if="posts.length > 0" class="flex items-center justify-center gap-1.5">
       <button
         class="hover:bg-busan-sand flex h-8 w-8 items-center justify-center rounded-lg border bg-white text-xs font-bold text-gray-500 disabled:cursor-not-allowed disabled:opacity-40"
         :disabled="currentPage === 1"

@@ -251,15 +251,33 @@ function normalizePost(post) {
 }
 
 export const posts = ref([])
+export const postsMeta = reactive({ total: 0, page: 1, size: 8 })
 
 export function findPost(id) {
   return posts.value.find((post) => post.id === Number(id)) ?? null
 }
 
-export async function loadPosts() {
+// 목록 조회: page/size/카테고리/자치구/검색어가 바뀔 때마다 서버에 새로 요청한다.
+export async function loadPosts({
+  page = 1,
+  size = 8,
+  categoryCode = '',
+  districtId = '',
+  keyword = '',
+} = {}) {
   try {
-    const result = await apiRequest('/posts')
+    const params = new URLSearchParams()
+    params.set('page', page)
+    params.set('size', size)
+    if (categoryCode) params.set('category_code', categoryCode)
+    if (districtId) params.set('district_id', districtId)
+    if (keyword) params.set('keyword', keyword)
+
+    const result = await apiRequest(`/posts?${params.toString()}`)
     posts.value = (result.items || []).map(normalizePost)
+    postsMeta.total = result.total ?? 0
+    postsMeta.page = result.page ?? page
+    postsMeta.size = result.size ?? size
     return posts.value
   } catch (error) {
     triggerToast(error.message, 'error')
@@ -502,7 +520,6 @@ export async function executeAuthAction() {
   }
 }
 
-loadPosts().catch(() => {})
 
 // ---------------------------------------------
 // 갈매기 AI 챗봇
