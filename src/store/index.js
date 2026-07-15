@@ -30,6 +30,27 @@ export const busanDistricts = [
 
 const BUSAN_CENTER = [35.1531, 129.1189]
 
+function normalizePlace(rawPlace, index = 0) {
+  const typeInfo = rawPlace?.place_type ?? {}
+  const typeCode = typeInfo.code || rawPlace?.type || 'TOURIST'
+  const districtName = rawPlace?.district_name || rawPlace?.district || '부산전체'
+  const latitude = Number(rawPlace?.latitude)
+  const longitude = Number(rawPlace?.longitude)
+
+  return {
+    id: rawPlace?.id ?? index + 1,
+    name: rawPlace?.name ?? '이름 없음',
+    type: typeCode,
+    description: rawPlace?.description ?? '',
+    district: districtName,
+    latitude: Number.isFinite(latitude) ? latitude : null,
+    longitude: Number.isFinite(longitude) ? longitude : null,
+    address: rawPlace?.address ?? '',
+    operating_info: rawPlace?.operating_info ?? '',
+    likes: Number(rawPlace?.likes ?? 0),
+  }
+}
+
 // ---------------------------------------------
 // 토스트 알림
 // ---------------------------------------------
@@ -117,6 +138,27 @@ export const places = ref([
     operating_info: '유원지 개방 04:00~24:00',
   },
 ])
+
+export async function loadTopPlaces() {
+  try {
+    const response = await fetch('/api/places/main')
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}`)
+    }
+
+    const data = await response.json()
+    const normalized = Array.isArray(data) ? data.map((item, index) => normalizePlace(item, index)) : []
+
+    if (normalized.length) {
+      places.value = normalized
+    }
+
+    return places.value
+  } catch (error) {
+    console.warn('메인 관광지 목록 로딩 실패. 로컬 기본 데이터를 사용합니다.', error)
+    return places.value
+  }
+}
 
 export function findPlace(id) {
   return places.value.find((place) => place.id === Number(id)) ?? null
