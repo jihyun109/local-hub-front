@@ -445,48 +445,102 @@ export function toggleChatbot() {
   chat.welcomeVisible = false
 }
 
-export function sendChatMessage(text) {
+export async function sendChatMessage(text) {
   const query = (text || '').trim()
   if (!query) return
 
   chat.messages.push({ sender: 'user', text: query })
   chat.loading = true
 
-  // TODO: 백엔드 AI 엔드포인트 연동 시 fetch 호출로 교체
-  setTimeout(() => {
-    const normalized = query.toLowerCase()
-    let replyText
-    let recommended
+  try {
+    const endpoint = import.meta.env.VITE_CHAT_API_URL || '/api/chat'
 
-    if (
-      normalized.includes('축제') ||
-      normalized.includes('일정') ||
-      normalized.includes('어방')
-    ) {
-      replyText =
-        "대표적으로 가마우지 그물끌기와 수령 가마놀이가 유명한 '광안리 어방축제'가 매해 봄 5월에 개최됩니다. 아래 연계 추천 카드에서 실시간 일정과 주차장 정보를 확인하입시더!"
-      recommended = [places.value[0], places.value[1]]
-    } else if (
-      normalized.includes('힐링') ||
-      normalized.includes('조용') ||
-      normalized.includes('산책')
-    ) {
-      replyText =
-        "파도 소리만을 느끼며 한적하게 힐링하고 싶으시다면, 영도 남단에 절경을 품은 '태종대 유원지'를 산책하거나 파스텔 가옥의 매력을 머금은 '감천문화마을' 골목을 추천합니데이."
-      recommended = [places.value[4], places.value[3]]
-    } else {
-      replyText =
-        '현재 부산 해양권 핫 플레이스인 해운대 해수욕장 정보와 인근 상권 후기를 찾아드렸습니다. 추가로 원하시는 버스 교통편이 있다면 상세 카드를 봐주세요!'
-      recommended = [places.value[2], places.value[0]]
+    const controller = new AbortController()
+    const timeoutId = setTimeout(() => controller.abort(), 50000)
+
+    const response = await fetch(endpoint, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ message: query }),
+      signal: controller.signal,
+    })
+
+    clearTimeout(timeoutId)
+
+    if (!response.ok) {
+      throw new Error(`Chat request failed: ${response.status}`)
     }
+
+    const contentType = response.headers.get('content-type') || ''
+    const rawPayload = contentType.includes('application/json')
+      ? await response.json()
+      : await response.text()
+
+    const payload = (() => {
+      const normalize = (value) => {
+        if (typeof value === 'string') {
+          try {
+            return JSON.parse(value)
+          } catch {
+            return value
+          }
+        }
+        return value
+      }
+
+      const normalized = normalize(rawPayload)
+      if (normalized && typeof normalized.reply === 'string') {
+        const nested = normalize(normalized.reply)
+        if (nested && typeof nested === 'object') {
+          return { ...normalized, ...nested }
+        }
+      }
+      return normalized
+    })()
+
+    const replyText =
+      typeof payload === 'string'
+        ? payload
+        : payload?.reply || payload?.message || payload?.data || payload?.text || '응답을 받지 못했습니다.'
+
+    const recommendedPlaces =
+      typeof payload === 'string'
+        ? []
+        : Array.isArray(payload?.recommendedPlaces)
+          ? payload.recommendedPlaces
+          : Array.isArray(payload?.recommended)
+            ? payload.recommended
+            : Array.isArray(payload?.places)
+              ? payload.places.map((place) => ({
+                  id: place?.id ?? place?.place_id ?? null,
+                  name: place?.name ?? place?.title ?? '추천 장소',
+                  district: place?.district ?? place?.location ?? '',
+                }))
+              : []
 
     chat.messages.push({
       sender: 'bot',
       text: replyText,
-      recommendedPlaces: recommended.filter(Boolean),
+      recommendedPlaces: recommendedPlaces.filter(Boolean),
     })
+  } catch (error) {
+    console.error('Chat request error:', error)
+
+    const isTimeout = error?.name === 'AbortError'
+    const message = isTimeout
+      ? '연결 시간이 초과되었습니다. 서버가 응답하지 않거나 네트워크가 불안정합니다.'
+      : '연결이 되지 않거나 서버에 문제가 있습니다. 잠시 후 다시 시도해주세요.'
+
+    chat.messages.push({
+      sender: 'bot',
+      text: message,
+      recommendedPlaces: [],
+    })
+  } finally {
     chat.loading = false
-  }, 1000)
+  }
 }
 
 export function openQuickChat(question) {
