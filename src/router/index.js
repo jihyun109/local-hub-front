@@ -23,4 +23,13 @@ const router = createRouter({
   },
 })
 
+router.beforeEach((to, from, next) => {
+  console.log('[Router] navigating', { from: from.fullPath, to: to.fullPath, name: to.name })
+  next()
+})
+
+router.afterEach((to, from) => {
+  console.log('[Router] navigation complete', { from: from.fullPath, to: to.fullPath, name: to.name })
+})
+
 export default router

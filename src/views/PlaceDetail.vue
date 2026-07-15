@@ -1,5 +1,5 @@
 <script setup>
-import { computed } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 
 import LeafletMap from '@/components/map/LeafletMap.vue'
@@ -11,16 +11,91 @@ const props = defineProps({
 
 const router = useRouter()
 
-const place = computed(() => findPlace(props.id))
+const place = ref(null)
+const loading = ref(false)
+const errorText = ref('')
+
+const fallbackPlace = computed(() => findPlace(props.id))
+
+const normalizePlaceDetail = (item) => {
+  const placeType = item?.place_type ?? {}
+  const typeCode = String(placeType?.code ?? item?.type ?? 'TOURIST').trim().toUpperCase()
+
+  return {
+    id: item?.id ?? Number(props.id),
+    name: item?.name ?? '이름 없음',
+    type: typeCode,
+    description: item?.description ?? '',
+    address: item?.address ?? '',
+    operating_info: item?.operating_info ?? '',
+    district: item?.district?.name ?? item?.district_name ?? '',
+    latitude: item?.latitude ?? null,
+    longitude: item?.longitude ?? null,
+    placeTypeName: placeType?.name ?? '',
+  }
+}
+
+const loadPlaceDetail = async () => {
+  const placeId = props.id
+  if (!placeId) {
+    place.value = null
+    errorText.value = ''
+    return
+  }
+
+  loading.value = true
+  errorText.value = ''
+
+  try {
+    const response = await fetch(`/api/places/${encodeURIComponent(placeId)}`)
+    if (!response.ok) throw new Error(`HTTP ${response.status}`)
+
+    const data = await response.json()
+    place.value = normalizePlaceDetail(data)
+
+    if (place.value?.latitude != null && place.value?.longitude != null) {
+      focusOnMap(place.value)
+    }
+  } catch (error) {
+    console.warn('상세 장소 조회 실패. 로컬 데이터를 사용합니다.', error)
+    place.value = fallbackPlace.value
+    errorText.value = '상세 정보를 불러오지 못해 기존 데이터로 표시합니다.'
+  } finally {
+    loading.value = false
+  }
+}
 
 const showOnMainMap = () => {
+  if (!place.value) return
   focusOnMap(place.value)
   router.push({ name: 'home' })
 }
+
+onMounted(() => {
+  loadPlaceDetail()
+})
+
+watch(() => props.id, () => {
+  loadPlaceDetail()
+})
 </script>
 
 <template>
-  <div v-if="place" class="space-y-6">
+  <div v-if="loading" class="shadow-premium rounded-3xl bg-white p-10 text-center text-sm font-medium text-gray-500">
+    상세 정보를 불러오는 중입니다...
+  </div>
+
+  <div v-else-if="errorText && !place" class="shadow-premium space-y-4 rounded-3xl bg-white p-10 text-center">
+    <p class="text-sm font-bold text-gray-500">{{ errorText }}</p>
+    <RouterLink
+      :to="{ name: 'places' }"
+      class="bg-busan-primary inline-block rounded-xl px-4 py-2 text-xs font-bold text-white"
+    >
+      디렉토리로 돌아가기
+    </RouterLink>
+  </div>
+
+  <div v-else-if="place" class="space-y-6">
     <div class="shadow-premium flex items-center justify-between rounded-2xl bg-white p-4">
       <RouterLink
         :to="{ name: 'places' }"
@@ -28,7 +103,6 @@ const showOnMainMap = () => {
       >
         ← 디렉토리 목록으로 복귀
       </RouterLink>
-      <span class="text-xs text-gray-400">관광 콘텐츠 고유 ID: #{{ place.id }}</span>
     </div>
 
     <div class="grid grid-cols-1 gap-6 lg:grid-cols-3">
@@ -37,7 +111,7 @@ const showOnMainMap = () => {
           <span
             class="bg-busan-sand text-busan-primary rounded-full px-3 py-1 text-[10px] font-extrabold"
           >
-            {{ place.type === 'FESTIVAL' ? '축제' : '명소' }}
+            {{ place.placeTypeName || (place.type === 'FESTIVAL' ? '축제' : '명소') }}
           </span>
           <h1 class="text-busan-deep text-2xl font-extrabold md:text-3xl">{{ place.name }}</h1>
         </div>
