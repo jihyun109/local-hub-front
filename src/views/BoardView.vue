@@ -1,10 +1,14 @@
 <script setup>
-import { computed, reactive } from 'vue'
+import { computed, onMounted, reactive } from 'vue'
 import { useRouter } from 'vue-router'
 
-import { busanDistricts, increaseViews, openWriteModal, posts, toggleLike } from '@/store'
+import { districts, increaseViews, loadDistricts, openWriteModal, posts, toggleLike } from '@/store'
 
 const router = useRouter()
+
+onMounted(() => {
+  loadDistricts().catch(() => {})
+})
 
 const filters = reactive({
   category: '',
@@ -98,7 +102,7 @@ const viewPost = (post) => {
           class="bg-busan-sand rounded-xl border px-3 py-1.5 text-xs font-bold focus:outline-none"
         >
           <option value="">모든 자치구</option>
-          <option v-for="dist in busanDistricts" :key="dist" :value="dist">{{ dist }}</option>
+          <option v-for="dist in districts" :key="dist.id" :value="dist.name">{{ dist.name }}</option>
         </select>
         <input
           v-model="filters.keyword"

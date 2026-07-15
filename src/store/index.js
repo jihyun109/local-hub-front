@@ -28,6 +28,8 @@ export const busanDistricts = [
   '해운대구',
 ]
 
+export const districts = ref(busanDistricts.map((name) => ({ id: name, name })))
+
 const BUSAN_CENTER = [35.1531, 129.1189]
 
 function normalizePlace(rawPlace, index = 0) {
@@ -208,6 +210,19 @@ async function apiRequest(path, options = {}) {
   }
 
   return data
+}
+
+export async function loadDistricts() {
+  try {
+    const result = await apiRequest('/districts')
+    if (Array.isArray(result) && result.length) {
+      districts.value = result
+    }
+    return districts.value
+  } catch (error) {
+    console.warn('자치구 목록 로딩 실패. 기본 목록을 사용합니다.', error)
+    return districts.value
+  }
 }
 
 function normalizePost(post) {
