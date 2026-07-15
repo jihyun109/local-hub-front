@@ -298,14 +298,13 @@ export const postEditor = reactive({
   form: emptyForm(),
 })
 
+// 글쓰기 모달의 "관련 관광지 지정" 드롭다운 전용 경량 목록 (id, name만)
+export const placeOptions = ref([])
+
 export async function loadPlaces() {
   try {
-    const result = await apiRequest('/places')
-    places.value = (result.items || []).map((item) => ({
-      id: item.id,
-      name: item.name,
-      district: item.district,
-    }))
+    const result = await apiRequest('/places/names')
+    placeOptions.value = Array.isArray(result) ? result : []
   } catch (error) {
     triggerToast(error.message, 'error')
   }
@@ -315,7 +314,6 @@ export function openWriteModal() {
   postEditor.isEdit = false
   postEditor.form = emptyForm()
   postEditor.open = true
-  loadPlaces().catch(() => {})
 }
 
 export function closeWriteModal() {

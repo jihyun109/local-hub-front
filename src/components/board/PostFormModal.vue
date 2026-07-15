@@ -1,14 +1,50 @@
 <script setup>
-import { onMounted } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 
-import { closeWriteModal, loadPlaces, places, postEditor, submitPostForm } from '@/store'
+import { closeWriteModal, placeOptions, postEditor, submitPostForm } from '@/store'
 
 const router = useRouter()
 
-onMounted(() => {
-  loadPlaces().catch(() => {})
+const placeQuery = ref('')
+const showPlaceList = ref(false)
+
+const filteredPlaces = computed(() => {
+  const keyword = placeQuery.value.trim().toLowerCase()
+  if (!keyword) return placeOptions.value
+  return placeOptions.value.filter((place) => place.name.toLowerCase().includes(keyword))
 })
+
+const selectPlace = (place) => {
+  postEditor.form.place_id = place.id
+  placeQuery.value = place.name
+  showPlaceList.value = false
+}
+
+const clearPlace = () => {
+  postEditor.form.place_id = null
+  placeQuery.value = ''
+  showPlaceList.value = false
+}
+
+// 클릭이 먼저 처리되도록 blur 시 약간의 지연 후 목록을 닫는다.
+const hidePlaceListDelayed = () => {
+  setTimeout(() => {
+    showPlaceList.value = false
+  }, 150)
+}
+
+watch(
+  () => postEditor.open,
+  (open) => {
+    if (!open) return
+    const selected = postEditor.form.place_id
+      ? placeOptions.value.find((place) => place.id === postEditor.form.place_id)
+      : null
+    placeQuery.value = selected ? selected.name : ''
+    showPlaceList.value = false
+  },
+)
 
 const submit = () => {
   const result = submitPostForm()
@@ -52,17 +88,40 @@ const submit = () => {
             </select>
           </div>
 
-          <div class="space-y-1">
+          <div class="relative space-y-1">
             <label class="block text-[11px] font-bold text-gray-500">관련 관광지 지정 (선택)</label>
-            <select
-              v-model="postEditor.form.place_id"
+            <input
+              v-model="placeQuery"
+              type="text"
+              placeholder="장소명을 검색해주세요 (예: 해운대)"
               class="bg-busan-light w-full rounded-xl border px-3.5 py-2 text-xs focus:outline-none"
+              @focus="showPlaceList = true"
+              @blur="hidePlaceListDelayed"
+            />
+            <div
+              v-if="showPlaceList"
+              class="absolute z-10 mt-1 max-h-40 w-full overflow-y-auto rounded-xl border bg-white shadow-lg"
             >
-              <option :value="null">장소 미연계</option>
-              <option v-for="place in places" :key="place.id" :value="place.id">
-                {{ place.name }} ({{ place.district }})
-              </option>
-            </select>
+              <button
+                type="button"
+                class="block w-full px-3.5 py-2 text-left text-xs font-medium text-gray-500 hover:bg-busan-light"
+                @mousedown.prevent="clearPlace"
+              >
+                장소 미연계
+              </button>
+              <button
+                v-for="place in filteredPlaces"
+                :key="place.id"
+                type="button"
+                class="block w-full px-3.5 py-2 text-left text-xs hover:bg-busan-light"
+                @mousedown.prevent="selectPlace(place)"
+              >
+                {{ place.name }}
+              </button>
+              <p v-if="filteredPlaces.length === 0" class="px-3.5 py-2 text-xs text-gray-400">
+                검색 결과가 없습니다.
+              </p>
+            </div>
           </div>
         </div>
 

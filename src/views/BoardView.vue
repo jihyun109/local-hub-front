@@ -2,12 +2,21 @@
 import { computed, onMounted, reactive } from 'vue'
 import { useRouter } from 'vue-router'
 
-import { districts, increaseViews, loadDistricts, openWriteModal, posts, toggleLike } from '@/store'
+import {
+  districts,
+  increaseViews,
+  loadDistricts,
+  loadPlaces,
+  openWriteModal,
+  posts,
+  toggleLike,
+} from '@/store'
 
 const router = useRouter()
 
 onMounted(() => {
   loadDistricts().catch(() => {})
+  loadPlaces().catch(() => {})
 })
 
 const filters = reactive({
