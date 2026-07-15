@@ -30,11 +30,11 @@ const markerIcon = (place) =>
 
 const popupHtml = (place) => `
   <div style="font-family: Pretendard, sans-serif; padding: 4px; min-width: 140px;">
-    <span style="font-size: 9px; font-weight: 800; color: #EE6C4D;">
-      ${place.type === 'FESTIVAL' ? '🎉 축제' : '📸 자연명소'}
-    </span>
+    <span style="font-size: 9px; font-weight: 800; color: #EE6C4D; text-transform: uppercase;">${
+      place.type === 'FESTIVAL' ? '🎉 축제' : '📸 자연명소'
+    }</span>
     <h4 style="margin: 2px 0; font-size: 12px; font-weight: 800; color: #0B2545;">${place.name}</h4>
-    <p style="margin: 0; font-size: 10px; color: #8DA9C4;">📍 ${place.district}</p>
+    <p style="margin: 0 0 6px 0; font-size: 10px; color: #8DA9C4;"><i class="fa-solid fa-location-dot"></i> ${place.district}</p>
   </div>
 `
 
