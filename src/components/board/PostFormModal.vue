@@ -67,7 +67,7 @@ const submit = () => {
       <div class="bg-busan-primary flex items-center justify-between p-5 text-white">
         <h2 class="flex items-center gap-2 text-base font-extrabold">
           <i class="fa-solid" :class="postEditor.isEdit ? 'fa-pen-nib' : 'fa-circle-plus'"></i>
-          <span>{{ postEditor.isEdit ? '게시글 수정' : '익명 소통글 등록' }}</span>
+          <span>{{ postEditor.isEdit ? '게시글 수정' : '소통글 등록' }}</span>
         </h2>
         <button class="text-white/80 hover:text-white" @click="closeWriteModal">
           <i class="fa-solid fa-xmark"></i>
@@ -83,7 +83,7 @@ const submit = () => {
               required
               class="bg-busan-light w-full rounded-xl border px-3.5 py-2 text-xs focus:outline-none"
             >
-              <option value="REVIEW">축제 후기 💬</option>
+              <option value="REVIEW">후기 💬</option>
               <option value="AD">홍보 / 광고 📢</option>
             </select>
           </div>

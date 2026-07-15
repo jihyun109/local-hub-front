@@ -16,7 +16,14 @@ async function fetchPost() {
 onMounted(fetchPost)
 watch(() => props.id, fetchPost)
 
-const categoryLabel = computed(() => ((post.value?.category || 'REVIEW') === 'AD' ? '홍보 / 광고' : '축제 후기'))
+const categoryLabel = computed(() => ((post.value?.category || 'REVIEW') === 'AD' ? '홍보 / 광고' : '후기'))
+
+function formatDateTime(value) {
+  if (!value) return ''
+  const date = new Date(value)
+  const pad = (n) => String(n).padStart(2, '0')
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())} ${pad(date.getHours())}:${pad(date.getMinutes())}`
+}
 </script>
 
 <template>
@@ -56,7 +63,7 @@ const categoryLabel = computed(() => ((post.value?.category || 'REVIEW') === 'AD
           >
             {{ categoryLabel }}
           </span>
-          <span class="text-xs font-medium text-gray-400">등록일: {{ post.created_at }}</span>
+          <span class="text-xs font-medium text-gray-400">등록일: {{ formatDateTime(post.created_at) }}</span>
         </div>
         <h1 class="text-busan-deep text-xl leading-relaxed font-extrabold md:text-2xl">
           {{ post.title }}

@@ -124,7 +124,7 @@ const viewPost = (post) => {
           "
           @click="filters.category = 'REVIEW'"
         >
-          💬 축제 후기
+          💬 후기
         </button>
         <button
           class="rounded-lg px-3 py-1.5 text-xs font-bold transition-all"
@@ -182,7 +182,7 @@ const viewPost = (post) => {
                       : 'bg-amber-100 text-amber-700'
                   "
                 >
-                  {{ (post.category || 'REVIEW') === 'AD' ? '홍보/광고' : '축제 후기' }}
+                  {{ (post.category || 'REVIEW') === 'AD' ? '홍보/광고' : '후기' }}
                 </span>
               </td>
               <td class="px-6 py-4 font-semibold">
