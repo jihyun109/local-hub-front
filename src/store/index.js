@@ -139,49 +139,84 @@ export function focusOnMap(place) {
 // ---------------------------------------------
 // 익명 게시판
 // ---------------------------------------------
-export const posts = ref([
-  {
-    id: 1,
-    category: 'REVIEW',
-    title: '어방축제 그물끌기 참가 후기 대박이네요 🎣',
-    content:
-      '가족이랑 광안리 가서 그물끌기 직접 경험했는데 낭만 그 자체였습니다. 밤바다에 광안대교 미디어파사드까지 더해져 최고의 추억을 쌓았습니다.',
-    author_name: '바다돌이',
-    password: 'test',
-    place_id: 1,
-    place_name: '광안리 어방축제',
-    district: '수영구',
-    views: 120,
-    likes: 42,
-    created_at: '2026-05-18',
-  },
-  {
-    id: 2,
-    category: 'AD',
-    title: '📢 BIFF 주차 연계 광안리 사거리 카페 제휴 할인!',
-    content:
-      'BIFF 광장 근처 카페 제휴 홍보입니다. 축제 기간 티켓 지참시 아메리카노 10% 현장 할인 혜택 제공하오니 축제 관람 전 들러보세요!',
-    author_name: '상인회대표',
-    password: 'test',
-    place_id: 2,
-    place_name: '부산국제영화제 (BIFF 광장)',
-    district: '중구',
-    views: 45,
-    likes: 12,
-    created_at: '2026-10-03',
-  },
-])
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:8000/api'
+
+async function apiRequest(path, options = {}) {
+  const headers = { Accept: 'application/json', ...(options.headers || {}) }
+  const config = { ...options, headers }
+
+  if (options.body && !config.headers['Content-Type']) {
+    config.headers['Content-Type'] = 'application/json'
+  }
+
+  const response = await fetch(`${API_BASE_URL}${path}`, config)
+  let data = null
+
+  try {
+    data = await response.json()
+  } catch {
+    data = null
+  }
+
+  if (!response.ok) {
+    throw new Error(data?.detail || '요청에 실패했습니다.')
+  }
+
+  return data
+}
+
+function normalizePost(post) {
+  const linkedPlace = Array.isArray(post.places) && post.places.length > 0 ? post.places[0] : null
+  const districtName =
+    (typeof post.district === 'string' && post.district) || post.district?.name || linkedPlace?.district || '부산전역'
+
+  return {
+    id: post.id,
+    category: post.category?.code || 'REVIEW',
+    title: post.title,
+    content: post.content,
+    author_name: post.author_name,
+    password: '',
+    place_id: linkedPlace?.id ?? null,
+    place_name: linkedPlace?.name ?? '',
+    district: districtName,
+    views: post.views ?? 0,
+    likes: post.likes ?? 0,
+    created_at: post.created_at,
+  }
+}
+
+export const posts = ref([])
 
 export function findPost(id) {
   return posts.value.find((post) => post.id === Number(id)) ?? null
 }
 
+export async function loadPosts() {
+  try {
+    const result = await apiRequest('/posts')
+    posts.value = (result.items || []).map(normalizePost)
+    return posts.value
+  } catch (error) {
+    triggerToast(error.message, 'error')
+    return []
+  }
+}
+
 export function increaseViews(post) {
+  if (!post) return
   post.views += 1
 }
 
-export function toggleLike(post) {
-  post.likes += 1
+export async function toggleLike(post) {
+  if (!post) return
+
+  try {
+    const result = await apiRequest(`/posts/${post.id}/like`, { method: 'POST' })
+    post.likes = result.likes
+  } catch (error) {
+    triggerToast(error.message, 'error')
+  }
 }
 
 // ---------------------------------------------
@@ -203,10 +238,24 @@ export const postEditor = reactive({
   form: emptyForm(),
 })
 
+export async function loadPlaces() {
+  try {
+    const result = await apiRequest('/places')
+    places.value = (result.items || []).map((item) => ({
+      id: item.id,
+      name: item.name,
+      district: item.district,
+    }))
+  } catch (error) {
+    triggerToast(error.message, 'error')
+  }
+}
+
 export function openWriteModal() {
   postEditor.isEdit = false
   postEditor.form = emptyForm()
   postEditor.open = true
+  loadPlaces().catch(() => {})
 }
 
 export function closeWriteModal() {
@@ -225,7 +274,7 @@ function linkedPlaceInfo(placeId) {
  * 작성/수정 폼 제출. 화면 이동은 호출한 컴포넌트가 결과를 보고 처리한다.
  * @returns {{ ok: boolean, mode?: 'create' | 'edit', postId?: number }}
  */
-export function submitPostForm() {
+export async function submitPostForm() {
   const form = postEditor.form
 
   if (form.password.length < 4) {
@@ -233,47 +282,77 @@ export function submitPostForm() {
     return { ok: false }
   }
 
-  const assoc = linkedPlaceInfo(form.place_id)
-
-  if (postEditor.isEdit) {
-    const target = findPost(form.id)
-    if (!target) {
-      triggerToast('수정할 게시글을 찾지 못했습니다.', 'error')
-      return { ok: false }
-    }
-
-    Object.assign(target, {
-      category: form.category,
-      title: form.title,
-      content: form.content,
-      place_id: form.place_id,
-      ...assoc,
-    })
-
-    postEditor.open = false
-    triggerToast('게시글 수정을 완료했습니다.', 'success')
-    return { ok: true, mode: 'edit', postId: target.id }
-  }
-
-  const nextId = posts.value.length ? Math.max(...posts.value.map((post) => post.id)) + 1 : 1
-
-  posts.value.push({
-    id: nextId,
-    category: form.category,
+  const categoryId = form.category === 'AD' ? 2 : 1
+  const linkedPlaceMeta = linkedPlaceInfo(form.place_id)
+  const payload = {
+    category_id: categoryId,
     title: form.title,
     content: form.content,
-    author_name: form.author_name,
-    password: form.password,
-    place_id: form.place_id,
-    ...assoc,
-    views: 1,
-    likes: 0,
-    created_at: new Date().toISOString().split('T')[0],
-  })
+    district_id: null,
+    district: linkedPlaceMeta.district,
+    district_name: linkedPlaceMeta.district,
+    place_ids: form.place_id ? [form.place_id] : [],
+  }
 
-  postEditor.open = false
-  triggerToast('신규 익명 수다가 생성되었습니다!', 'success')
-  return { ok: true, mode: 'create', postId: nextId }
+  try {
+    if (postEditor.isEdit) {
+      const target = findPost(form.id)
+      if (!target) {
+        triggerToast('수정할 게시글을 찾지 못했습니다.', 'error')
+        return { ok: false }
+      }
+
+      await apiRequest(`/posts/${target.id}/verify-password`, {
+        method: 'POST',
+        body: JSON.stringify({ password: form.password }),
+      })
+
+      const updated = await apiRequest(`/posts/${target.id}`, {
+        method: 'PUT',
+        body: JSON.stringify(payload),
+      })
+      const normalized = normalizePost({
+        ...updated,
+        district: linkedPlaceMeta.district,
+        places: linkedPlaceMeta.place_name
+          ? [{ id: form.place_id, name: linkedPlaceMeta.place_name, district: linkedPlaceMeta.district }]
+          : updated.places || [],
+      })
+      const index = posts.value.findIndex((post) => post.id === normalized.id)
+      if (index >= 0) {
+        posts.value[index] = normalized
+      }
+
+      postEditor.open = false
+      triggerToast('게시글 수정을 완료했습니다.', 'success')
+      return { ok: true, mode: 'edit', postId: normalized.id }
+    }
+
+    const created = await apiRequest('/posts', {
+      method: 'POST',
+      body: JSON.stringify({
+        ...payload,
+        author_name: form.author_name,
+        password: form.password,
+      }),
+    })
+    posts.value.unshift(
+      normalizePost({
+        ...created,
+        district: linkedPlaceMeta.district,
+        places: linkedPlaceMeta.place_name
+          ? [{ id: form.place_id, name: linkedPlaceMeta.place_name, district: linkedPlaceMeta.district }]
+          : created.places || [],
+      }),
+    )
+
+    postEditor.open = false
+    triggerToast('신규 익명 수다가 생성되었습니다!', 'success')
+    return { ok: true, mode: 'create', postId: created.id }
+  } catch (error) {
+    triggerToast(error.message, 'error')
+    return { ok: false }
+  }
 }
 
 // ---------------------------------------------
@@ -305,31 +384,51 @@ export function requestDelete(postId) {
  * 비밀번호를 검증하고 수정 모달을 열거나 게시글을 삭제한다.
  * @returns {{ ok: boolean, action?: 'edit' | 'delete' }}
  */
-export function executeAuthAction() {
+export async function executeAuthAction() {
   const target = findPost(authPrompt.targetPostId)
   if (!target) {
     triggerToast('대상 게시글을 찾지 못했습니다.', 'error')
     return { ok: false }
   }
 
-  if (target.password !== authPrompt.passwordInput) {
-    triggerToast('비밀번호가 올바르지 않습니다!', 'error')
+  try {
+    await apiRequest(`/posts/${target.id}/verify-password`, {
+      method: 'POST',
+      body: JSON.stringify({ password: authPrompt.passwordInput }),
+    })
+
+    authPrompt.open = false
+
+    if (authPrompt.action === 'edit') {
+      postEditor.isEdit = true
+      postEditor.form = {
+        id: target.id,
+        category: target.category,
+        title: target.title,
+        content: target.content,
+        author_name: target.author_name,
+        password: '',
+        place_id: target.place_id,
+      }
+      postEditor.open = true
+      return { ok: true, action: 'edit' }
+    }
+
+    await apiRequest(`/posts/${target.id}`, {
+      method: 'DELETE',
+      body: JSON.stringify({ password: authPrompt.passwordInput }),
+    })
+
+    posts.value = posts.value.filter((post) => post.id !== target.id)
+    triggerToast('성공적으로 게시글이 삭제되었습니다.', 'success')
+    return { ok: true, action: 'delete' }
+  } catch (error) {
+    triggerToast(error.message, 'error')
     return { ok: false }
   }
-
-  authPrompt.open = false
-
-  if (authPrompt.action === 'edit') {
-    postEditor.isEdit = true
-    postEditor.form = { ...target }
-    postEditor.open = true
-    return { ok: true, action: 'edit' }
-  }
-
-  posts.value = posts.value.filter((post) => post.id !== target.id)
-  triggerToast('성공적으로 게시글이 삭제되었습니다.', 'success')
-  return { ok: true, action: 'delete' }
 }
+
+loadPosts().catch(() => {})
 
 // ---------------------------------------------
 // 갈매기 AI 챗봇
