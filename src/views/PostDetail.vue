@@ -1,13 +1,20 @@
 <script setup>
-import { computed } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 
-import { findPost, requestDelete, requestEdit } from '@/store'
+import { loadPost, requestDelete, requestEdit } from '@/store'
 
 const props = defineProps({
   id: { type: [String, Number], required: true },
 })
 
-const post = computed(() => findPost(props.id))
+const post = ref(null)
+
+async function fetchPost() {
+  post.value = await loadPost(props.id)
+}
+
+onMounted(fetchPost)
+watch(() => props.id, fetchPost)
 
 const categoryLabel = computed(() => ((post.value?.category || 'REVIEW') === 'AD' ? '홍보 / 광고' : '축제 후기'))
 </script>
@@ -54,7 +61,7 @@ const categoryLabel = computed(() => ((post.value?.category || 'REVIEW') === 'AD
         <h1 class="text-busan-deep text-xl leading-relaxed font-extrabold md:text-2xl">
           {{ post.title }}
         </h1>
-        <p class="text-xs font-bold text-gray-500">필명: {{ post.author_name }} (익명)</p>
+        <p class="text-xs font-bold text-gray-500">필명: {{ post.author_name }}</p>
       </div>
 
       <div

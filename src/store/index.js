@@ -228,17 +228,21 @@ export async function loadDistricts() {
 function normalizePost(post) {
   const linkedPlace = Array.isArray(post.places) && post.places.length > 0 ? post.places[0] : null
   const districtName =
-    (typeof post.district === 'string' && post.district) || post.district?.name || linkedPlace?.district || '부산전역'
+    post.district_name ||
+    (typeof post.district === 'string' && post.district) ||
+    post.district?.name ||
+    linkedPlace?.district ||
+    '부산전역'
 
   return {
     id: post.id,
-    category: post.category?.code || 'REVIEW',
+    category: post.category_code || post.category?.code || 'REVIEW',
     title: post.title,
     content: post.content,
     author_name: post.author_name,
     password: '',
     place_id: linkedPlace?.id ?? null,
-    place_name: linkedPlace?.name ?? '',
+    place_name: post.place_name ?? linkedPlace?.name ?? '',
     district: districtName,
     views: post.views ?? 0,
     likes: post.likes ?? 0,
@@ -260,6 +264,18 @@ export async function loadPosts() {
   } catch (error) {
     triggerToast(error.message, 'error')
     return []
+  }
+}
+
+// 목록 응답은 created_at/place id 등을 담지 않는 경량 형태라, 상세 화면은
+// 캐시된 목록 대신 매번 /posts/{id}를 새로 조회해서 완전한 데이터를 받는다.
+export async function loadPost(id) {
+  try {
+    const result = await apiRequest(`/posts/${id}`)
+    return normalizePost(result)
+  } catch (error) {
+    triggerToast(error.message, 'error')
+    return null
   }
 }
 

@@ -56,18 +56,18 @@ const viewPost = (post) => {
       <div>
         <h1 class="text-busan-primary flex items-center gap-2 text-xl font-extrabold">
           <i class="fa-regular fa-comments text-busan-accent"></i>
-          <span>익명 소통 후기 &amp; 로컬 상권 홍보 광장</span>
+          <span> 로컬 상권 홍보 &amp; 후기 광장</span>
         </h1>
         <p class="mt-1 text-xs text-gray-500">
-          부산의 축제 소감, 숨은 맛집, 제휴 상업 광고 등을 익명 비밀번호 체계로 자유롭게
-          발행하세요.
+          부산의 축제 소감, 숨은 맛집, 제휴 상업 광고 등을 자유롭게
+          공유하세요.
         </p>
       </div>
       <button
         class="bg-busan-accent hover:bg-busan-accent/90 flex items-center gap-1.5 rounded-xl px-4 py-2.5 text-xs font-bold text-white shadow-sm transition-all"
         @click="openWriteModal"
       >
-        <i class="fa-solid fa-pen"></i> 익명 소통글 쓰기
+        <i class="fa-solid fa-pen"></i> 소통글 쓰기
       </button>
     </div>
 
