@@ -12,17 +12,22 @@ const filters = reactive({
   keyword: '',
 })
 
-const filteredPosts = computed(() =>
-  posts.value.filter((post) => {
-    const matchCategory = !filters.category || post.category === filters.category
+const filteredPosts = computed(() => {
+  const keyword = (filters.keyword || '').trim().toLowerCase()
+
+  return posts.value.filter((post) => {
+    const categoryCode = post.category || 'REVIEW'
+    const matchCategory = !filters.category || categoryCode === filters.category
     const matchDistrict = !filters.district || post.district === filters.district
     const matchKeyword =
-      !filters.keyword ||
-      post.title.includes(filters.keyword) ||
-      post.content.includes(filters.keyword)
+      !keyword ||
+      (post.title || '').toLowerCase().includes(keyword) ||
+      (post.content || '').toLowerCase().includes(keyword) ||
+      (post.place_name || '').toLowerCase().includes(keyword)
+
     return matchCategory && matchDistrict && matchKeyword
-  }),
-)
+  })
+})
 
 const viewPost = (post) => {
   increaseViews(post)
@@ -98,7 +103,7 @@ const viewPost = (post) => {
         <input
           v-model="filters.keyword"
           type="text"
-          placeholder="제목/내용 통합검색"
+          placeholder="제목/내용/장소 통합검색"
           class="bg-busan-sand rounded-xl border px-3.5 py-1.5 text-xs focus:outline-none"
         />
       </div>
@@ -127,12 +132,12 @@ const viewPost = (post) => {
                 <span
                   class="rounded-full px-2.5 py-1 text-[10px] font-extrabold"
                   :class="
-                    post.category === 'AD'
+                    (post.category || 'REVIEW') === 'AD'
                       ? 'bg-rose-100 text-rose-700'
                       : 'bg-amber-100 text-amber-700'
                   "
                 >
-                  {{ post.category === 'AD' ? '홍보/광고' : '축제 후기' }}
+                  {{ (post.category || 'REVIEW') === 'AD' ? '홍보/광고' : '축제 후기' }}
                 </span>
               </td>
               <td class="px-6 py-4 font-semibold">
