@@ -1,5 +1,5 @@
 <script setup>
-import { computed, onMounted, reactive } from 'vue'
+import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 
 import {
@@ -25,6 +25,9 @@ const filters = reactive({
   keyword: '',
 })
 
+const PAGE_SIZE = 8
+const currentPage = ref(1)
+
 const filteredPosts = computed(() => {
   const keyword = (filters.keyword || '').trim().toLowerCase()
 
@@ -40,6 +43,35 @@ const filteredPosts = computed(() => {
 
     return matchCategory && matchDistrict && matchKeyword
   })
+})
+
+const totalPages = computed(() => Math.max(1, Math.ceil(filteredPosts.value.length / PAGE_SIZE)))
+
+const paginatedPosts = computed(() => {
+  const start = (currentPage.value - 1) * PAGE_SIZE
+  return filteredPosts.value.slice(start, start + PAGE_SIZE)
+})
+
+const pageNumbers = computed(() => {
+  const pages = []
+  for (let i = 1; i <= totalPages.value; i += 1) pages.push(i)
+  return pages
+})
+
+const goToPage = (page) => {
+  if (page < 1 || page > totalPages.value) return
+  currentPage.value = page
+}
+
+watch(
+  () => [filters.category, filters.district, filters.keyword],
+  () => {
+    currentPage.value = 1
+  },
+)
+
+watch(totalPages, (pages) => {
+  if (currentPage.value > pages) currentPage.value = pages
 })
 
 const viewPost = (post) => {
@@ -137,7 +169,7 @@ const viewPost = (post) => {
           </thead>
           <tbody class="divide-y divide-gray-100 text-xs sm:text-sm">
             <tr
-              v-for="post in filteredPosts"
+              v-for="post in paginatedPosts"
               :key="post.id"
               class="hover:bg-busan-sand/10 transition-colors"
             >
@@ -189,6 +221,37 @@ const viewPost = (post) => {
           </tbody>
         </table>
       </div>
+    </div>
+
+    <!-- 페이지네이션 -->
+    <div v-if="filteredPosts.length > 0" class="flex items-center justify-center gap-1.5">
+      <button
+        class="hover:bg-busan-sand flex h-8 w-8 items-center justify-center rounded-lg border bg-white text-xs font-bold text-gray-500 disabled:cursor-not-allowed disabled:opacity-40"
+        :disabled="currentPage === 1"
+        @click="goToPage(currentPage - 1)"
+      >
+        <i class="fa-solid fa-chevron-left"></i>
+      </button>
+      <button
+        v-for="page in pageNumbers"
+        :key="page"
+        class="flex h-8 w-8 items-center justify-center rounded-lg text-xs font-bold transition-all"
+        :class="
+          page === currentPage
+            ? 'bg-busan-primary text-white'
+            : 'hover:bg-busan-sand border bg-white text-gray-600'
+        "
+        @click="goToPage(page)"
+      >
+        {{ page }}
+      </button>
+      <button
+        class="hover:bg-busan-sand flex h-8 w-8 items-center justify-center rounded-lg border bg-white text-xs font-bold text-gray-500 disabled:cursor-not-allowed disabled:opacity-40"
+        :disabled="currentPage === totalPages"
+        @click="goToPage(currentPage + 1)"
+      >
+        <i class="fa-solid fa-chevron-right"></i>
+      </button>
     </div>
   </div>
 </template>
