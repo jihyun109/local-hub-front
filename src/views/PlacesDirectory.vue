@@ -51,8 +51,10 @@ const normalizePlace = (item) => {
   const district = item?.district ?? {}
   const typeCode = String(placeType?.code ?? item?.type ?? 'TOURIST').trim().toUpperCase()
 
+  const rawId = item?.id ?? item?.place_id ?? item?.placeId ?? null
+
   return {
-    id: item?.id,
+    id: rawId != null ? Number(rawId) : null,
     name: item?.name ?? '이름 없음',
     type: typeCode,
     description: item?.description ?? '',
@@ -151,7 +153,17 @@ const loadNextPage = () => {
 }
 
 const viewDetail = (place) => {
-  router.push({ name: 'place-detail', params: { id: place.id } })
+  const placeId = place?.id ?? place?.place_id
+  console.log('[PlacesDirectory] viewDetail clicked', { place, placeId })
+
+  if (!placeId) {
+    console.warn('[PlacesDirectory] Missing place id, navigation skipped', place)
+    return
+  }
+
+  const target = { name: 'place-detail', params: { id: String(placeId) } }
+  console.log('[PlacesDirectory] Navigating to', target)
+  router.push(target)
 }
 
 const showOnMap = (place) => {

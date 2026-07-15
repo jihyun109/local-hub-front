@@ -33,16 +33,19 @@ const BUSAN_CENTER = [35.1531, 129.1189]
 function normalizePlace(rawPlace, index = 0) {
   const typeInfo = rawPlace?.place_type ?? {}
   const typeCode = typeInfo.code || rawPlace?.type || 'TOURIST'
-  const districtName = rawPlace?.district_name || rawPlace?.district || '부산전체'
+  const districtInfo = rawPlace?.district ?? {}
+  const districtName = rawPlace?.district_name || districtInfo?.name || rawPlace?.district || '부산전체'
   const latitude = Number(rawPlace?.latitude)
   const longitude = Number(rawPlace?.longitude)
+  const rawId = rawPlace?.id ?? rawPlace?.place_id ?? rawPlace?.placeId ?? null
 
   return {
-    id: rawPlace?.id ?? index + 1,
+    id: rawId != null ? Number(rawId) : index + 1,
     name: rawPlace?.name ?? '이름 없음',
     type: typeCode,
     description: rawPlace?.description ?? '',
     district: districtName,
+    districtId: districtInfo?.id ?? rawPlace?.district_id ?? null,
     latitude: Number.isFinite(latitude) ? latitude : null,
     longitude: Number.isFinite(longitude) ? longitude : null,
     address: rawPlace?.address ?? '',

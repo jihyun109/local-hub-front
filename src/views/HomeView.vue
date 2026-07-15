@@ -12,7 +12,10 @@ onMounted(async () => {
 })
 
 const viewDetail = (place) => {
-  router.push({ name: 'place-detail', params: { id: place.id } })
+  const placeId = place?.id ?? place?.place_id
+  if (!placeId) return
+
+  router.push({ name: 'place-detail', params: { id: String(placeId) } })
 }
 </script>
 
