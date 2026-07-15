@@ -1,9 +1,14 @@
 <script setup>
+import { onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 
-import { closeWriteModal, places, postEditor, submitPostForm } from '@/store'
+import { closeWriteModal, loadPlaces, places, postEditor, submitPostForm } from '@/store'
 
 const router = useRouter()
+
+onMounted(() => {
+  loadPlaces().catch(() => {})
+})
 
 const submit = () => {
   const result = submitPostForm()

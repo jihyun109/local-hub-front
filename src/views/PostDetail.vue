@@ -8,6 +8,8 @@ const props = defineProps({
 })
 
 const post = computed(() => findPost(props.id))
+
+const categoryLabel = computed(() => ((post.value?.category || 'REVIEW') === 'AD' ? '홍보 / 광고' : '축제 후기'))
 </script>
 
 <template>
@@ -42,10 +44,10 @@ const post = computed(() => findPost(props.id))
           <span
             class="rounded-full px-2.5 py-1 text-[9px] font-extrabold"
             :class="
-              post.category === 'AD' ? 'bg-rose-100 text-rose-700' : 'bg-amber-100 text-amber-700'
+              (post.category || 'REVIEW') === 'AD' ? 'bg-rose-100 text-rose-700' : 'bg-amber-100 text-amber-700'
             "
           >
-            {{ post.category === 'AD' ? '홍보 / 광고' : '축제 후기' }}
+            {{ categoryLabel }}
           </span>
           <span class="text-xs font-medium text-gray-400">등록일: {{ post.created_at }}</span>
         </div>
