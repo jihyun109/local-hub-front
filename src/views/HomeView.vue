@@ -64,12 +64,7 @@ const viewDetail = (place) => {
         <div
           class="border-busan-sand/50 min-h-[350px] flex-grow overflow-hidden rounded-2xl border shadow-inner"
         >
-          <LeafletMap
-            :places="places"
-            :center="mapFocus.center"
-            :zoom="mapFocus.zoom"
-            @select="viewDetail"
-          />
+          <LeafletMap :places="places" :center="mapFocus.center" :zoom="mapFocus.zoom" />
         </div>
       </div>
 
