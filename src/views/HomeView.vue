@@ -1,10 +1,15 @@
 <script setup>
+import { onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 
 import LeafletMap from '@/components/map/LeafletMap.vue'
-import { focusOnMap, mapFocus, openQuickChat, places } from '@/store'
+import { focusOnMap, mapFocus, openQuickChat, places, loadTopPlaces } from '@/store'
 
 const router = useRouter()
+
+onMounted(async () => {
+  await loadTopPlaces()
+})
 
 const viewDetail = (place) => {
   router.push({ name: 'place-detail', params: { id: place.id } })
